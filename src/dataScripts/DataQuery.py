@@ -1,21 +1,24 @@
-from dataclasses import dataclass
-from typing import List, Tuple, Union
-
+from dataclasses import dataclass, field
+from typing import List, Tuple, Union, Dict, Optional
+import pandas as pd
 import re
-from dataScripts import SQL_KEYWORDS
+from dataScripts import SQL_KEYWORDS, ALL_DB
+import os
+import json
 
 
 @dataclass(frozen=True, kw_only=True)
 class DataQuery:
-    question_id: int
+    path: Optional[str] = None
+    question_id: Optional[int] = None
     db_id: str
     question: str
-    evidence: str
+    evidence: Optional[str]
     SQL: str
-    difficulty: str
-    bird_split: str
-    is_gold: bool
-    _key_words: List[str]
+    difficulty: Optional[str]
+    bird_split: str = "dev"
+    is_gold: bool = True
+    _key_words: List[str] = field(init=False)
     
     def __post_init__(self):
         self._key_words = self._extract_sql_keywords(self.SQL)
@@ -44,6 +47,7 @@ class DataQuery:
 @dataclass(frozen=True, kw_only=True)
 class DataTable:
     db_id: str
+    path: str
     table_names_original: List[str]
     table_names: List[str]
     column_names_original: List[Tuple[int, str]]
@@ -51,4 +55,48 @@ class DataTable:
     column_types: List[str]
     primary_keys: List[int] | List[Union[int, List[int]]]
     foreign_keys: List[int] | List[Union[int, List[int]]]
+    
+    
+    
+@dataclass
+class DataManager:
+    db_name = str
+    path: str
+    data_query: List[DataQuery] = field(init=False)
+    data_table: List[DataTable] = field(init=False)
+    tables_info: List[Dict[str, pd.DataFrame]] = field(init=False)
+    
+    @staticmethod
+    def read_csv_files_to_dict(folder_path):
+    # Create an empty dictionary to store file name and dataframe pairs
+        csv_dict = {}
+        
+        # List all files in the folder
+        for file_name in os.listdir(folder_path):
+            # Check if the file is a CSV file
+            if file_name.endswith('.csv'):
+                # Construct the full file path
+                file_path = os.path.join(folder_path, file_name)
+                # Read the CSV file into a dataframe
+                df = pd.read_csv(file_path)
+                # Store the dataframe in the dictionary with the file name as the key (without the .csv extension)
+                csv_dict[file_name] = df
+                
+        return csv_dict
+    
+    def __post_init__(self):
+        if self.db_name.lower() not in [n_db.lower() for n_db in ALL_DB.keys()]:
+            raise AttributeError(
+                f'Cannot recognize llm {self.db_name}. It is not in the dictionary of known DBs, which are: {str(ALL_DB.keys())}.')
+        
+        self.data_query_path = os.path.join(self.path, "dev.json")
+        self.data_table_path = os.path.join(self.path, "dev_tables.json")
+        
+        with open(self.data_query_path, 'r') as f:
+            self.data_query = [DataQuery(**q) for q in json.load(f) if q['db_id'] == self.db_name] # ? funziona così oppure devo aggiungere le keywords
+        
+        with open(self.data_table_path, 'r') as f:
+            self.data_table = [DataTable(**q) for q in json.load(f) if q['db_id'] == self.db_name]
+            
+        self.tables_info = DataManager.read_csv_files_to_dict(os.path.join(self.path, "dev_databases", self.db_name, "database_desctipion"))
     
