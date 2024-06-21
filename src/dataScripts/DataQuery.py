@@ -21,7 +21,7 @@ class DataQuery:
     _key_words: List[str] = field(init=False)
     
     def __post_init__(self):
-        self._key_words = self._extract_sql_keywords(self.SQL)
+        object.__setattr__(self, '_key_words', self._extract_sql_keywords(self.SQL)) # Use the same thing the generated __init__ method does: object.__setattr__.
         
     @staticmethod
     def _extract_sql_keywords(SQL: str): # ! here yuriy AST code
@@ -60,7 +60,7 @@ class DataTable:
     
 @dataclass
 class DataManager:
-    db_name = str
+    db_name: str
     path: str
     data_query: List[DataQuery] = field(init=False)
     data_table: List[DataTable] = field(init=False)
@@ -80,23 +80,27 @@ class DataManager:
                 # Read the CSV file into a dataframe
                 df = pd.read_csv(file_path)
                 # Store the dataframe in the dictionary with the file name as the key (without the .csv extension)
-                csv_dict[file_name] = df
+                csv_dict[file_name.replace('.csv', '')] = df
                 
         return csv_dict
     
     def __post_init__(self):
-        if self.db_name.lower() not in [n_db.lower() for n_db in ALL_DB.keys()]:
+        if self.db_name.lower() not in [n_db.lower() for n_db in ALL_DB.keys()] + [n_db.lower() for n_db in ALL_DB.values()]:
             raise AttributeError(
                 f'Cannot recognize llm {self.db_name}. It is not in the dictionary of known DBs, which are: {str(ALL_DB.keys())}.')
-        
+        else:
+            try:
+                self.db_name = ALL_DB[self.db_name.lower()]
+            except:
+                pass # because the name is already correct and consistent with the name of the database
         self.data_query_path = os.path.join(self.path, "dev.json")
         self.data_table_path = os.path.join(self.path, "dev_tables.json")
         
         with open(self.data_query_path, 'r') as f:
-            self.data_query = [DataQuery(**q) for q in json.load(f) if q['db_id'] == self.db_name] # ? funziona così oppure devo aggiungere le keywords
+            self.data_query = [DataQuery(**q, path=self.data_query_path) for q in json.load(f) if q['db_id'] == self.db_name]
         
         with open(self.data_table_path, 'r') as f:
-            self.data_table = [DataTable(**q) for q in json.load(f) if q['db_id'] == self.db_name]
+            self.data_table = [DataTable(**q, path=self.data_table_path) for q in json.load(f) if q['db_id'] == self.db_name]
             
-        self.tables_info = DataManager.read_csv_files_to_dict(os.path.join(self.path, "dev_databases", self.db_name, "database_desctipion"))
+        self.tables_info = DataManager.read_csv_files_to_dict(os.path.join(self.path, "dev_databases", self.db_name, "database_description"))
     
