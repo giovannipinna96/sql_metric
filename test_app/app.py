@@ -53,7 +53,7 @@ def process_inputs(sql_gold, sql_gen, dropdown_value):
     if res_table < 0.1:
         final_score = res_table
     else:
-        final_score = (res_table * 0.8 + common_keywords * 0.2) / 2
+        final_score = (res_table * 0.8 + common_keywords * 0.2) #/ 2
     return gold_table, gen_table, res_table, res_ves, common_keywords, final_score
 
 ALL_DB: dict[str, str] = {
