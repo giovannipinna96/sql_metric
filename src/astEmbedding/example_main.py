@@ -1,11 +1,11 @@
 from sql_embedder import SQLEmbeddingComparer
 
 if __name__ == "__main__":
-    sql1 = """SELECT employees.name, departments.department_name
+    sql1 = """SELECT employees.name, employees.department_name
                 FROM employees
                 """
-    sql2 = """SELECT name
-                  FROM departments 
+    sql2 = """SELECT name, 
+                  FROM cofee 
                   """
 
     embedding_comparer = SQLEmbeddingComparer(trust_remote_code=True)

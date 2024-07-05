@@ -1,8 +1,20 @@
 from sentence_transformers import SentenceTransformer, util
 from ast_algo import SQLASTComparer
 
+########## EMBEDDING MODELS FOR CODE : 
+# 1. "WhereIsAI/UAE-Code-Large-V1"
+# 2 "jinaai/jina-embeddings-v2-base-code"
+# 3. "flax-sentence-embeddings/st-codesearch-distilroberta-base"
+# 4. "SQAI/streetlight_sql_embedding2"
+# 5. "SQAI/streetlight_sql_embedding3"
+
+
+######### EMBEDDING MODELS FOR TEXT : 
+# 1. "nomic-ai/nomic-embed-text-v1"
+
+
 class SQLEmbeddingComparer:
-    def __init__(self, model_name: str = "nomic-ai/nomic-embed-text-v1", trust_remote_code= True):  #<----CAN define a different model here
+    def __init__(self, model_name: str = "sergeyvi4ev/all-MiniLM-RAGSQL-code", trust_remote_code= True):  #<----CAN define a different model here
         """
         initialize the embedding model
         """
@@ -34,7 +46,7 @@ class SQLEmbeddingComparer:
             # Use raw SQL statements
             input1 = sql_stmt1
             input2 = sql_stmt2
-        
+
         # Encode and compare embeddings
         query_emb = self.model.encode(input1)
         doc_emb = self.model.encode(input2)
