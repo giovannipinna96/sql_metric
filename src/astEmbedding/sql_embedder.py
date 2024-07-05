@@ -1,16 +1,41 @@
 from sentence_transformers import SentenceTransformer, util
+from ast_algo import SQLASTComparer
 
 class SQLEmbeddingComparer:
-    def __init__(self, model_name: str = "sentence-transformers/msmarco-bert-base-dot-v5"):  #<----CAN define a different model here
+    def __init__(self, model_name: str = "nomic-ai/nomic-embed-text-v1", trust_remote_code= True):  #<----CAN define a different model here
         """
         initialize the embedding model
         """
-        self.model = SentenceTransformer(model_name)
+        
 
-    def compare_embeddings(self, sql_stmt1: str, sql_stmt2: str):
+        self.model = SentenceTransformer(model_name, trust_remote_code=trust_remote_code)
+
+    def compare_embeddings(self, sql_stmt1: str, sql_stmt2: str, compare_ast: bool = True):
         """
-        cosine similarity of embeddings for two SQL queries.
+        Cosine similarity of embeddings for two SQL queries or their ASTs.
+        
+        Parameters:
+        - sql_stmt1: First SQL statement
+        - sql_stmt2: Second SQL statement
+        - compare_ast: Boolean to determine whether to compare ASTs instead of raw SQL queries
         """
-        query_emb = self.model.encode(sql_stmt1)
-        doc_emb = self.model.encode(sql_stmt2)
+        if compare_ast:
+            # Parse SQL statements to ASTs
+            try:
+                # Parse SQL statements to ASTs
+                ast_comparer = SQLASTComparer(sql_stmt1, sql_stmt2)
+                asts = ast_comparer.get_ast()
+                input1 = asts['AST1']
+                input2 = asts['AST2']
+            except ValueError as e:
+                print("Query similairty is 0 because of the error")
+                return 0  
+        else:
+            # Use raw SQL statements
+            input1 = sql_stmt1
+            input2 = sql_stmt2
+        
+        # Encode and compare embeddings
+        query_emb = self.model.encode(input1)
+        doc_emb = self.model.encode(input2)
         return util.cos_sim(query_emb, doc_emb)[0].cpu().tolist()

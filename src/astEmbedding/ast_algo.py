@@ -16,14 +16,17 @@ class SQLASTComparer:
         """
         Parses an SQL query into an AST.
         """
-        return parse_sql(sql_query)[0].stmt
+        try:
+            return parse_sql(sql_query)[0].stmt
+        except Exception as e:
+            raise ValueError(f"The query {sql_query} is WRONG, please review the query. Error: {e}")
 
     def get_ast(self):
         """
         get ASTs as strings
         """
         
-        pp = pprint.PrettyPrinter(indent=4)
+        pp = pprint.PrettyPrinter()
         ast = {
             'AST1': pp.pformat(self.ast1(skip_none=True)),
             'AST2': pp.pformat(self.ast2(skip_none=True))
