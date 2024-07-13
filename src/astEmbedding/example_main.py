@@ -6,7 +6,7 @@ if __name__ == "__main__":
                 """
     sql2 = """SELECT name, 
                   FROM cofee 
-                  """
+                """
 
     embedding_comparer = SQLEmbeddingComparer(trust_remote_code=True)
     

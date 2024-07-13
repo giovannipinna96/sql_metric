@@ -14,7 +14,7 @@ from ast_algo import SQLASTComparer
 
 
 class SQLEmbeddingComparer:
-    def __init__(self, model_name: str = "sergeyvi4ev/all-MiniLM-RAGSQL-code", trust_remote_code= True):  #<----CAN define a different model here
+    def __init__(self, model_name: str = "sergeyvi4ev/all-MiniLM-RAGSQL-code", trust_remote_code:bool= True):  #<----CAN define a different model here
         """
         initialize the embedding model
         """
