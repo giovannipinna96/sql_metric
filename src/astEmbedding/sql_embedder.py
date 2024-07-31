@@ -1,5 +1,8 @@
+import sys
+sys.path.append("../src")
+
 from sentence_transformers import SentenceTransformer, util
-from ast_algo import SQLASTComparer
+from astEmbedding.ast_algo import SQLASTComparer
 
 ########## EMBEDDING MODELS FOR CODE : 
 # 1. "WhereIsAI/UAE-Code-Large-V1"
