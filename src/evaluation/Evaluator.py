@@ -59,8 +59,8 @@ class tableEvaluator(Evaluator):
         pattern = re.compile(r'\blimit\s[0-9]\b')
         
         # Perform replacement in the main string
-        replaced_string = pattern.sub(new_limit, main_string)
-        print(replaced_string)
+        replaced_string = pattern.sub(new_limit, main_string.lower())
+        # print(replaced_string)
         return replaced_string
    
     @staticmethod
@@ -83,17 +83,23 @@ class tableEvaluator(Evaluator):
 
     def evaluate(self, sql_gold: str, sql_predicted: str, db_manager: DatabaseManager) -> List[float] | float:
         if not sql_gold == sql_predicted:
-            print("Augmenting limit to 10")
-            sql_gold = self.replace_limit_with_10(sql_gold)
-            sql_predicted = self.replace_limit_with_10(sql_predicted)
+            # print("Augmenting limit to 10")
+            # sql_gold = self.replace_limit_with_10(sql_gold)
+            # sql_predicted = self.replace_limit_with_10(sql_predicted)
             result_query_execution_gold, execution_time_gold = db_manager.query_executor(sql_gold)
             result_query_execution_gen, execution_time_gen = db_manager.query_executor(sql_predicted)
-            if self.is_exact_substring('ORDER BY', sql_gold.upper()):# or self.is_exact_substring('ORDER BY', sql_predicted.upper()):
-                res_order_table = self.order_table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen)
+            print(result_query_execution_gen.shape)
+            if result_query_execution_gen.shape[0] < 150000:
+                if self.is_exact_substring('ORDER BY', sql_gold.upper()):# or self.is_exact_substring('ORDER BY', sql_predicted.upper()):
+                    print("order")
+                    res_order_table = self.order_table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen)
+                else:
+                    res_table = self.table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen)
+                res_ves = self.ves_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen, execution_time_gold=execution_time_gold, execution_time_gen=execution_time_gen)
+                # res_levenshtein_distance = self.levenshtein_distance_between_two_sql_stings(sql_gold_string=db_manager.data_query.keywords, sql_predicted_string=sql_predicted)
             else:
-                res_table = self.table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen)
-            res_ves = self.ves_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen, execution_time_gold=execution_time_gold, execution_time_gen=execution_time_gen)
-            # res_levenshtein_distance = self.levenshtein_distance_between_two_sql_stings(sql_gold_string=db_manager.data_query.keywords, sql_predicted_string=sql_predicted)
+                print("Too rows"*3)
+                return None, None, 0, 0
         else:
             print("The gold and predicted sql are equal.")
             return None, None, 1, 1
@@ -101,6 +107,7 @@ class tableEvaluator(Evaluator):
         if self.is_exact_substring('ORDER BY', sql_gold.upper()):
             return result_query_execution_gold, result_query_execution_gen, res_order_table, res_ves
         else:
+            # print("no order by"*30)
             return result_query_execution_gold, result_query_execution_gen, res_table, res_ves
     
     @staticmethod
@@ -184,20 +191,22 @@ class tableEvaluator(Evaluator):
 
             
     def table_evaluation(self, result_query_execution_gold, result_query_execution_gen) -> float | None:
-        print(result_query_execution_gold)
-        print(result_query_execution_gen)
-        print("Table Evaluation...")
+        # print(result_query_execution_gold)
+        # print(result_query_execution_gen)
+        # print("Table Evaluation...")
         list_result_query_execution_gold = list(result_query_execution_gold.to_dict(orient='list').values())
         list_result_query_execution_gen = list(result_query_execution_gen.to_dict(orient='list').values())
         edit_distance_matirx = self._build_cross_edit_distance_matrix(list_result_query_execution_gold,
                                                       list_result_query_execution_gen)
         
+        # ! non so quante righe e colonne sono presenti nella gold query dalla generated query
+        
         e = 0
-        for i in range(len(edit_distance_matirx)):
-            print(edit_distance_matirx[i])
+        # for i in range(len(edit_distance_matirx)):
+            # print(edit_distance_matirx[i])
         for i in range(len(edit_distance_matirx)):
             e += min(edit_distance_matirx[i])/max(len(list_result_query_execution_gold[0]), len(list_result_query_execution_gen[0]))
-        print(1 - (e/len(edit_distance_matirx)))
+        # print(1 - (e/len(edit_distance_matirx)))
         return 1 - (e/len(edit_distance_matirx))
     
     @staticmethod
@@ -212,21 +221,21 @@ class tableEvaluator(Evaluator):
         Returns:
         int: The Levenshtein distance between the two strings.
         """
-        print("Levenshtein distance...")
-        print(Levenshtein.distance(sql_gold_string, sql_predicted_string))
+        # print("Levenshtein distance...")
+        # print(Levenshtein.distance(sql_gold_string, sql_predicted_string))
         return Levenshtein.distance(sql_gold_string, sql_predicted_string)
     
         
     def ves_evaluation(self, result_query_execution_gold, result_query_execution_gen, execution_time_gold, execution_time_gen) -> float | int:
         # if self.is_equal(result_query_execution_gold, result_query_execution_gen):
-        print("VES evaluation...")
-        print(sqrt(execution_time_gold / execution_time_gen)) # TODO sometime is over 1. Proportional to the data retrived?
+        # print("VES evaluation...")
+        # print(sqrt(execution_time_gold / execution_time_gen)) # TODO sometime is over 1. Proportional to the data retrived?
         return sqrt(execution_time_gold / execution_time_gen) # TODO check if is correct
         # else: 
             # return 0
         
     def mean_ves_evaluation(self, result_query_execution_gold, result_query_execution_gen, execution_time_gold, execution_time_gen) -> float | int:
-        print("VES evaluation...")
+        # print("VES evaluation...")
         if len(result_query_execution_gold) == len(result_query_execution_gen) == len(execution_time_gold) == len(execution_time_gen):
             sum = 0
             for i in range(len(execution_time_gold)):
@@ -303,41 +312,182 @@ class tableEvaluator(Evaluator):
                     LCSuff[i][j] = 0
         return result
     
+    # def longest_common_subpattern(self, list1, list2):
+    #     max_length = 0
+    #     for sublist1, sublist2 in zip(list1, list2):
+    #         length = self.lcs(sublist1, sublist2)
+    #         if length > max_length:
+    #             max_length = length
+    #     print("maxlen")
+    #     print(type(max_length))
+    #     return max_length
+    # @staticmethod
+    # def count_non_empty_sublists(lst):
+    #     return sum(1 for sublist in lst if sublist)
+    
+    # def longest_common_subpattern(self, list1, list2):
+    #     results = []
+        
+    #     # Iterate over the longer list
+    #     for i in range(max(len(list1), len(list2))):
+    #         if i < len(list1) and i < len(list2):
+    #             sublist1 = list1[i]
+    #             sublist2 = list2[i]
+    #         elif i < len(list1):
+    #             sublist1 = list1[i]
+    #             sublist2 = []
+    #         else:
+    #             sublist1 = []
+    #             sublist2 = list2[i]
+            
+    #         biggest_subpattern = []
+    #         n, m = len(sublist1), len(sublist2)
+            
+    #         for x in range(n):
+    #             for y in range(m):
+    #                 current_subpattern = []
+    #                 k = 0
+    #                 while x + k < n and y + k < m and sublist1[x + k] == sublist2[y + k]:
+    #                     current_subpattern.append(sublist1[x + k])
+    #                     k += 1
+                    
+    #                 if len(current_subpattern) > len(biggest_subpattern):
+    #                     biggest_subpattern = current_subpattern
+
+    #         results.append(biggest_subpattern)
+            
+    #         #print("7"*30)
+    #         #print(results)
+    #         #print("7"*30)
+
+    #     return self.count_non_empty_sublists(results)
+    
     def longest_common_subpattern(self, list1, list2):
-        max_length = 0
-        for sublist1, sublist2 in zip(list1, list2):
-            length = self.lcs(sublist1, sublist2)
-            if length > max_length:
-                max_length = length
-                
-        return max_length
+        def compare_sublists(sublist1, sublist2):
+            return all(item1 == item2 for item1, item2 in zip(sublist1, sublist2))
+
+        max_subpattern = 0
+        for i in range(len(list1)):
+            for j in range(len(list2)):
+                current_subpattern = 0
+                k, l = i, j
+                while k < len(list1) and l < len(list2):
+                    if compare_sublists(list1[k], list2[l]):
+                        current_subpattern += 1
+                        k += 1
+                        l += 1
+                    else:
+                        break
+                max_subpattern = max(max_subpattern, current_subpattern)
+
+        return max_subpattern
+    
+    
+    def longest_common_subpattern_strict(self, list1, list2):
+        def compare_sublists(sublist1, sublist2):
+            return all(item1 == item2 for item1, item2 in zip(sublist1, sublist2))
+
+        max_subpattern = 0
+        for shift in range(min(len(list1), len(list2))):
+            current_subpattern = 0
+            i = j = shift
+            while i < len(list1) and j < len(list2):
+                if compare_sublists(list1[i], list2[j]):
+                    current_subpattern += 1
+                    i += 1
+                    j += 1
+                else:
+                    break
+            max_subpattern = max(max_subpattern, current_subpattern)
+
+        return max_subpattern
     
     @staticmethod
     def transpose_matrix(matrix):
         # Use zip(*matrix) to transpose the matrix
         transposed = list(map(list, zip(*matrix)))
         return transposed
+    
+    @staticmethod
+    def calculate_score(gold_rows, generated_rows, max_matching_gold_rows):
+        # print("a")
+        # print(gold_rows)
+        # print("b")
+        # print(generated_rows)
+        # print("c")
+        # print(max_matching_gold_rows)
+        # print("="*30)
+        # if generated_rows == gold_rows == max_matching_gold_rows:
+        #     print("si entra qua")
+        #     return 1.0
+        # missing_rows_penalty = (gold_rows - max_matching_gold_rows) / gold_rows # da correggere
+        if generated_rows < gold_rows:
+            missing_rows_penalty = (gold_rows - max_matching_gold_rows) / gold_rows
+            score = 1.0 - missing_rows_penalty
+        else:
+            missing_rows_penalty = (generated_rows - max_matching_gold_rows) / gold_rows # ! ma è giusto diviso per gold_rows?
+            score = 1.0 - (missing_rows_penalty / 1.5)
+        
+        print(f"the raw socre {score}")
+        return score
+
+# # Example usage:
+# gold_rows = 100
+# generated_rows = 90
+# max_matching_gold_rows = 85
+
+# score = calculate_score(gold_rows, generated_rows, max_matching_gold_rows)
+# print(f"Score: {score}")
+
    
     def order_table_evaluation(self, result_query_execution_gold, result_query_execution_gen, ranges = None, random: bool = True, number_of_pairs: int = 10) -> float | None:
         list_result_query_execution_gold = list(result_query_execution_gold.to_dict(orient='list').values())
         list_result_query_execution_gen = list(result_query_execution_gen.to_dict(orient='list').values())
         
-        print(list_result_query_execution_gold)
-        print("="*30)
-        print(list_result_query_execution_gen)
-        print("="*30)
+        # print(list_result_query_execution_gold)
+        # print("="*30)
+        # print(list_result_query_execution_gen)
+        # print("="*30)
         
         best_permutation = self.find_most_similar_indices(list_result_query_execution_gold, list_result_query_execution_gen)
         reorderedlist_result_query_execution_gold = self.riordina_per_indici(list_result_query_execution_gold, best_permutation)
         transpost_list_result_query_execution_gold = self.transpose_matrix(reorderedlist_result_query_execution_gold)
         transpost_list_result_query_execution_gen = self.transpose_matrix(list_result_query_execution_gen)
-        print(transpost_list_result_query_execution_gold)
-        print("="*30)
-        print(transpost_list_result_query_execution_gen)
-        print("="*30)
-        score = self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen) / len(transpost_list_result_query_execution_gold[0])
-        print(f"socre for ordered table: {score}")
+        # print(transpost_list_result_query_execution_gold)
+        # print("="*30)
+        # print(transpost_list_result_query_execution_gen)
+        # print("="*30)
+        # print("<"*30)
+        # print(transpost_list_result_query_execution_gold)
+        # print("<"*30)
+        # print(transpost_list_result_query_execution_gen)
+        
+        # print(type(transpost_list_result_query_execution_gold))
+        # print(type(transpost_list_result_query_execution_gold[0]))
+        # print(len(transpost_list_result_query_execution_gold))
+        # print(len(transpost_list_result_query_execution_gold[0]))
+        
+        # print("<a"*30)
+        # print(self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen))
+        # print("<a"*30)
+        if round(len(transpost_list_result_query_execution_gold[0]) * 1.25) > len(transpost_list_result_query_execution_gen[0]) or round(len(transpost_list_result_query_execution_gold) * 1.25) > len(transpost_list_result_query_execution_gen):
+            # score = self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen) / len(transpost_list_result_query_execution_gold[0])
+            row_score = self.calculate_score(len(transpost_list_result_query_execution_gold), len(transpost_list_result_query_execution_gen), self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen)) # !  self.longest_common_subpattern(transpost_list_result_query_execution_gold[0], transpost_list_result_query_execution_gen[0]) non solo per uno ma per tutti
+            column_score = self.calculate_score(len(transpost_list_result_query_execution_gold[0]), len(transpost_list_result_query_execution_gen[0]), len(best_permutation))
+            if len(transpost_list_result_query_execution_gold[0]) > len(transpost_list_result_query_execution_gen[0]) or len(transpost_list_result_query_execution_gold) > len(transpost_list_result_query_execution_gen):
+                score = (row_score * 0.4 + column_score * 0.6) * 0.8
+            else:
+                score = (row_score * 0.4 + column_score * 0.6)
+        else:
+            score = 0
+        try:
+            print(f"socre for ordered table: {score}, row_score {row_score}, column_score {column_score}")
+        except:
+            print(f"score {score}")
         return score
         
         
         
+# SELECT City, Street FROM schools Order BY City DESC LIMIT 11
+# SELECT Street as T, City FROM schools Order BY City DESC LIMIT 10
+# SELECT * FROM ( SELECT City, Street FROM schools ORDER BY City DESC LIMIT 11 ) subquery ORDER BY City ASC

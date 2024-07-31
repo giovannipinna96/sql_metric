@@ -23,10 +23,10 @@ class DatabaseManager(ABC):
         return self._connection_status
         
     def load_database(self, path: str) -> None:
-        print("Loading database...")
+        # print("Loading database...")
         try:
             self._connection = sqlite3.connect(path)
-            print("Connection established")
+            # print("Connection established")
             self._connection_status = True
         except Exception as e:
             print(f"Connection failed: {e}")
@@ -58,13 +58,13 @@ class DatabaseInterpreter(DatabaseManager):
        
     def query_executor(self, query: str) -> None:
         if self.connection_status:
-            print("Executing query...")
+            # print("Executing query...")
             start_time = time.time()
             cursor = self._connection.cursor()
             result_query_execution = cursor.execute(query)
             end_time = time.time()
             execution_time = end_time - start_time
-            print("Query executed")
+            # print("Query executed")
             return result_query_execution, execution_time
         else:
             print("Connection not established please create a connection before executing queries")
@@ -81,33 +81,37 @@ class DatabaseInterpreterPandas(DatabaseManager):
             super().__init__(dataManager.db_name)
             self.path = dataManager.path
             self.data_manager = dataManager
-        elif database_name in None and path is not None and dataManager is None:
+        elif database_name is None and path is not None and dataManager is None:
             self.path = path
             self.data_manager = DataManager("Not known", path)
             self.database_name = "Not known"
             print("ATTENTION you not provide a database name, for this reason the database name will be 'Not known'")
         else:
-            raise ValueError("Please provide a database name and a path OR a data table OR a path")         
+            self.path = path
+            self.data_manager = dataManager
+            self.database_name = database_name
+            # raise ValueError("Please provide a database name and a path OR a data table OR a path")         
         self.__type = "Pandas"
     @property
     def type(self) -> str:
         return self.__type
     
-    def load_database(self, path: str | None = None) -> None:
+    def load_database(self, path: str | None = None, index: int | None = None) -> None:
         if path is not None:
             super().load_database(path)
         else:
-            super().load_database(os.path.join(self.path, "dev_databases", self.data_manager.db_name, f"{self.data_manager.db_name}.sqlite"))
+            print(os.path.join(self.path, "dev_databases", self.data_manager.data_query[index].db_id, f"{self.data_manager.data_query[index].db_id}.sqlite"))
+            super().load_database(os.path.join(self.path, "dev_databases", self.data_manager.data_query[index].db_id, f"{self.data_manager.data_query[index].db_id}.sqlite"))
             
     
     def query_executor(self, query: str):
         if self._connection is not None:
-            print("Executing query...")
+            # print("Executing query...")
             start_time = time.time()
             result_query_execution = pd.read_sql_query(query, self._connection)
             end_time = time.time()
             execution_time = end_time - start_time
-            print("Query executed")
+            # print("Query executed")
             return result_query_execution, execution_time
         else:
             print("Connection not established please create a connection before executing queries")
