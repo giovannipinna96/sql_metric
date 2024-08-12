@@ -62,8 +62,8 @@ class DataQuery:
     difficulty: Optional[str]
     bird_split: str = "dev"
     there_is_generated: bool = True
-    sql_model : Optional[str]
-    sql_generated : Optional[str]
+    sql_model : Optional[str] | None = None
+    sql_generated : Optional[str] | None = None
     _key_words: List[str] = field(init=False)
     
     def __post_init__(self):
@@ -108,7 +108,7 @@ class DataTable:
 class DataManager:
     path: str
     db_name: str | None
-    sql_generated_path : Optional[str]
+    sql_generated_path : Optional[str] | None
     data_query: List[DataQuery] = field(init=False)
     data_table: List[DataTable] = field(init=False)
     tables_info: List[Dict[str, pd.DataFrame]] = field(init=False)

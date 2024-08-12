@@ -76,7 +76,7 @@ class DatabaseInterpreterPandas(DatabaseManager):
         if database_name is not None and path is not None and dataManager is None:
             super().__init__(database_name)
             self.path = path
-            self.data_manager = DataManager(database_name, path)
+            self.data_manager = DataManager(db_name=database_name, path=path, sql_generated_path=None)
         elif database_name is None and path is None and dataManager is not None:
             super().__init__(dataManager.db_name)
             self.path = dataManager.path
@@ -96,7 +96,7 @@ class DatabaseInterpreterPandas(DatabaseManager):
     def type(self) -> str:
         return self.__type
     
-    def load_database(self, path: str | None = None, index: int | None = None) -> None:
+    def load_database(self, path: str | None = None, index: int | None = 0) -> None:
         if path is not None:
             super().load_database(path)
         else:
