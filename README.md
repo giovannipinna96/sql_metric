@@ -116,3 +116,10 @@ Second go in the `test_app` folder
 Third run `python app.py`
 
 Fourth go to the link with your browser.
+
+## 8. Video Demo
+
+Video [YouTube](https://youtu.be/3kF6Yr8EoaU) about how work the metric. (video made on 13/08/2024)
+
+![](video_demo.mp4)
+
