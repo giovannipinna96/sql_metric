@@ -421,13 +421,16 @@ class tableEvaluator(Evaluator):
         #     print("si entra qua")
         #     return 1.0
         # missing_rows_penalty = (gold_rows - max_matching_gold_rows) / gold_rows # da correggere
-        if generated_rows < gold_rows:
+        if max_matching_gold_rows == 0:
+            score = 0
+        elif generated_rows < gold_rows:
             missing_rows_penalty = (gold_rows - max_matching_gold_rows) / gold_rows
             score = 1.0 - missing_rows_penalty
         else:
             missing_rows_penalty = (generated_rows - max_matching_gold_rows) / gold_rows # ! ma è giusto diviso per gold_rows?
             score = 1.0 - (missing_rows_penalty / 1.5)
         
+        print(f'max_match {max_matching_gold_rows}')
         print(f"the raw socre {score}")
         return score
 
@@ -441,6 +444,7 @@ class tableEvaluator(Evaluator):
 
    
     def order_table_evaluation(self, result_query_execution_gold, result_query_execution_gen, ranges = None, random: bool = True, number_of_pairs: int = 10) -> float | None:
+        # ! i due risultati non sono invertibili se inverto sql_gold & generated viene diverso come è possibile?
         list_result_query_execution_gold = list(result_query_execution_gold.to_dict(orient='list').values())
         list_result_query_execution_gen = list(result_query_execution_gen.to_dict(orient='list').values())
         
@@ -470,14 +474,17 @@ class tableEvaluator(Evaluator):
         # print("<a"*30)
         # print(self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen))
         # print("<a"*30)
-        if round(len(transpost_list_result_query_execution_gold[0]) * 1.25) > len(transpost_list_result_query_execution_gen[0]) or round(len(transpost_list_result_query_execution_gold) * 1.25) > len(transpost_list_result_query_execution_gen):
+        if round(len(transpost_list_result_query_execution_gold[0]) * 1.25) > len(transpost_list_result_query_execution_gen[0]) or round(len(transpost_list_result_query_execution_gold) * 1.25) > len(transpost_list_result_query_execution_gen): 
             # score = self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen) / len(transpost_list_result_query_execution_gold[0])
             row_score = self.calculate_score(len(transpost_list_result_query_execution_gold), len(transpost_list_result_query_execution_gen), self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen)) # !  self.longest_common_subpattern(transpost_list_result_query_execution_gold[0], transpost_list_result_query_execution_gen[0]) non solo per uno ma per tutti
             column_score = self.calculate_score(len(transpost_list_result_query_execution_gold[0]), len(transpost_list_result_query_execution_gen[0]), len(best_permutation))
-            if len(transpost_list_result_query_execution_gold[0]) > len(transpost_list_result_query_execution_gen[0]) or len(transpost_list_result_query_execution_gold) > len(transpost_list_result_query_execution_gen):
-                score = (row_score * 0.4 + column_score * 0.6) * 0.8
+            if row_score == 0 or column_score == 0:
+                score = 0
             else:
-                score = (row_score * 0.4 + column_score * 0.6)
+                if len(transpost_list_result_query_execution_gold[0]) > len(transpost_list_result_query_execution_gen[0]) or len(transpost_list_result_query_execution_gold) > len(transpost_list_result_query_execution_gen):
+                    score = (row_score * 0.4 + column_score * 0.6) * 0.8
+                else:
+                    score = (row_score * 0.4 + column_score * 0.6)
         else:
             score = 0
         try:
@@ -486,8 +493,3 @@ class tableEvaluator(Evaluator):
             print(f"score {score}")
         return score
         
-        
-        
-# SELECT City, Street FROM schools Order BY City DESC LIMIT 11
-# SELECT Street as T, City FROM schools Order BY City DESC LIMIT 10
-# SELECT * FROM ( SELECT City, Street FROM schools ORDER BY City DESC LIMIT 11 ) subquery ORDER BY City ASC
