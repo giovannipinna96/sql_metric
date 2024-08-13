@@ -113,4 +113,4 @@ with gr.Blocks() as demo:
     button.click(process_inputs, inputs=[sql_gold, sql_gen, dropdown], outputs=[gold_table, gen_table, tss, ves, common_keywords, final_score])
 
 # Esegui l'app
-demo.launch(share = True)
+demo.launch(share = True, debug = True)
