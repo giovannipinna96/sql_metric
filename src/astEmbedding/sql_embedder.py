@@ -10,6 +10,7 @@ from astEmbedding.ast_algo import SQLASTComparer
 # 3. "flax-sentence-embeddings/st-codesearch-distilroberta-base"
 # 4. "SQAI/streetlight_sql_embedding2"
 # 5. "SQAI/streetlight_sql_embedding3"
+# 6. "s2593817/sft-sql-embedding" (https://huggingface.co/s2593817/sft-sql-embedding)
 
 
 ######### EMBEDDING MODELS FOR TEXT : 

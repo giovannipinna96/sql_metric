@@ -80,8 +80,21 @@ class tableEvaluator(Evaluator):
         pattern = re.compile(r'\b' + re.escape(substring) + r'\b')
         return bool(pattern.search(main_string))
     
+    @staticmethod
+    def delete_inside_parentheses(text):
+        result = []
+        depth = 0
+        for char in text:
+            if char == '(':
+                depth += 1
+            elif char == ')':
+                depth -= 1
+            elif depth == 0:
+                result.append(char)
+        return ''.join(result)
+    
 
-    def evaluate(self, sql_gold: str, sql_predicted: str, db_manager: DatabaseManager) -> List[float] | float:
+    def evaluate(self, sql_gold: str, sql_predicted: str, db_manager: DatabaseManager, max_extra_information_percentage=0.25) -> List[float] | float:
         if not sql_gold == sql_predicted:
             # print("Augmenting limit to 10")
             # sql_gold = self.replace_limit_with_10(sql_gold)
@@ -90,9 +103,9 @@ class tableEvaluator(Evaluator):
             result_query_execution_gen, execution_time_gen = db_manager.query_executor(sql_predicted)
             print(result_query_execution_gen.shape)
             if result_query_execution_gen.shape[0] < 150000:
-                if self.is_exact_substring('ORDER BY', sql_gold.upper()):# or self.is_exact_substring('ORDER BY', sql_predicted.upper()):
+                if self.is_exact_substring('ORDER BY', self.delete_inside_parentheses(sql_gold.upper())):# or self.is_exact_substring('ORDER BY', sql_predicted.upper()):
                     print("order")
-                    res_order_table = self.order_table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen)
+                    res_order_table = self.order_table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen, max_extra_information_percentage=max_extra_information_percentage)
                 else:
                     res_table = self.table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen)
                 res_ves = self.ves_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen, execution_time_gold=execution_time_gold, execution_time_gen=execution_time_gen)
@@ -104,7 +117,7 @@ class tableEvaluator(Evaluator):
             print("The gold and predicted sql are equal.")
             return None, None, 1, 1
            
-        if self.is_exact_substring('ORDER BY', sql_gold.upper()):
+        if self.is_exact_substring('ORDER BY', self.delete_inside_parentheses(sql_gold.upper())):# or self.is_exact_substring('ORDER BY', sql_predicted.upper()):
             return result_query_execution_gold, result_query_execution_gen, res_order_table, res_ves
         else:
             # print("no order by"*30)
@@ -443,7 +456,7 @@ class tableEvaluator(Evaluator):
 # print(f"Score: {score}")
 
    
-    def order_table_evaluation(self, result_query_execution_gold, result_query_execution_gen, ranges = None, random: bool = True, number_of_pairs: int = 10) -> float | None:
+    def order_table_evaluation(self, result_query_execution_gold, result_query_execution_gen, ranges = None, random: bool = True, number_of_pairs: int = 10, max_extra_information_percentage=0.25) -> float | None:
         # ! i due risultati non sono invertibili se inverto sql_gold & generated viene diverso come è possibile?
         list_result_query_execution_gold = list(result_query_execution_gold.to_dict(orient='list').values())
         list_result_query_execution_gen = list(result_query_execution_gen.to_dict(orient='list').values())
@@ -474,7 +487,7 @@ class tableEvaluator(Evaluator):
         # print("<a"*30)
         # print(self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen))
         # print("<a"*30)
-        if round(len(transpost_list_result_query_execution_gold[0]) * 1.25) > len(transpost_list_result_query_execution_gen[0]) or round(len(transpost_list_result_query_execution_gold) * 1.25) > len(transpost_list_result_query_execution_gen): 
+        if round(len(transpost_list_result_query_execution_gold[0]) * (1 + max_extra_information_percentage)) > len(transpost_list_result_query_execution_gen[0]) or round(len(transpost_list_result_query_execution_gold) * (1 + max_extra_information_percentage)) > len(transpost_list_result_query_execution_gen): 
             # score = self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen) / len(transpost_list_result_query_execution_gold[0])
             row_score = self.calculate_score(len(transpost_list_result_query_execution_gold), len(transpost_list_result_query_execution_gen), self.longest_common_subpattern(transpost_list_result_query_execution_gold, transpost_list_result_query_execution_gen)) # !  self.longest_common_subpattern(transpost_list_result_query_execution_gold[0], transpost_list_result_query_execution_gen[0]) non solo per uno ma per tutti
             column_score = self.calculate_score(len(transpost_list_result_query_execution_gold[0]), len(transpost_list_result_query_execution_gen[0]), len(best_permutation))
