@@ -34,8 +34,8 @@ def elementi_comuni_con_duplicati(lista1, lista2):
         
         return num_comuni / max(len(lista1), len(lista2))
 
-def sql_similarity_score(sql1: str, sql2: str, compare_ast: bool = False, model_name : str = "sergeyvi4ev/all-MiniLM-RAGSQL-code"):
-    embedding_comparer = SQLEmbeddingComparer(model_name=model_name, trust_remote_code=True)
+def sql_similarity_score(sql1: str, sql2: str, embedding_comparer, compare_ast: bool = False):
+    # embedding_comparer = SQLEmbeddingComparer(model_name=model_name, trust_remote_code=True)
     similarity_score = embedding_comparer.compare_embeddings(sql1, sql2, compare_ast)
     return similarity_score
 
@@ -102,21 +102,25 @@ if __name__ == "__main__":
     print("START")
     start_time = time.time()
     # Example usage
-    folder_path_predicted = '/mnt/data/gpinna/sql_metric/sql_metric/data/raw_data/predict_from_models/bird_dev'
-    file_path_DataManager = '/mnt/data/gpinna/sql_metric/sql_metric/data/raw_data/dev'
+    folder_path_predicted = '/leonardo_work/uTS24_Pinna/gpinna00/phd_project/sql_metric/sql_metric/data/raw_data/predict_from_models/bird_dev'
+    file_path_DataManager = '/leonardo_work/uTS24_Pinna/gpinna00/phd_project/sql_metric/sql_metric/data/raw_data/dev'
     my_data_manager = DataManager(file_path_DataManager, db_name = None, sql_generated_path = folder_path_predicted)
     print(len(my_data_manager.data_query))
     print("start comparing")
     metric_res = []
     tab_eval = tableEvaluator()
+    embedding_comparer = SQLEmbeddingComparer(model_name=args.model_name, trust_remote_code=True)
     for i in range(len(my_data_manager.data_query)):
         try:
+            print("="*30)
+            print("="*30)
+            print("="*30)
             start_single = time.time()
-            interpreter = DatabaseInterpreterPandas(my_data_manager.data_query[i].db_id, '/mnt/data/gpinna/sql_metric/sql_metric/data/raw_data/dev', dataManager= my_data_manager)
+            interpreter = DatabaseInterpreterPandas(my_data_manager.data_query[i].db_id, '/leonardo_work/uTS24_Pinna/gpinna00/phd_project/sql_metric/sql_metric/data/raw_data/dev', dataManager= my_data_manager)
             interpreter.load_database(path = None, index=i)
             print(i)
             gold_table, gen_table, res_table, res_ves = tab_eval.evaluate(my_data_manager.data_query[i].SQL, my_data_manager.data_query[i].sql_generated, interpreter, max_extra_information_percentage=args.max_extra_information_percentage)
-            sql_sim_score = sql_similarity_score(sql1=my_data_manager.data_query[i].SQL, sql2=my_data_manager.data_query[i].sql_generated, model_name=args.model_name)[0]
+            sql_sim_score = sql_similarity_score(sql1=my_data_manager.data_query[i].SQL, sql2=my_data_manager.data_query[i].sql_generated, model=embedding_comparer)[0]
             # common_keywords = elementi_comuni_con_duplicati(extract_sql_keywords(sql_gold), extract_sql_keywords(sql_gen))
             if res_table < 0.1:
                 final_score = res_table
@@ -127,8 +131,10 @@ if __name__ == "__main__":
                 final_score = (res_table * args.weight_final_score_table + sql_sim_score * weight_final_score_sim) #/ 2
             if final_score < 0:
                 final_score = 0.000
-        except:
-            print(f'except {i} ')
+        except Exception as e:
+            print(f'except {i}')
+            print(f'{e}')
+            prjnt
             res_table = None
             res_ves = None
             sql_sim_score = None
@@ -138,27 +144,50 @@ if __name__ == "__main__":
         end_single = time.time()
         exec_single = timedelta(seconds=end_single - start_single)
         try:
-            metric_res.append({'model': my_data_manager.data_query[i].sql_model,
+            metric_res = {'model': my_data_manager.data_query[i].sql_model,
                 'db': my_data_manager.data_query[i].db_id,
                 'num': i,
                 'sql_gold': my_data_manager.data_query[i].SQL,
                 'sql_gen': my_data_manager.data_query[i].sql_generated, 'gold_shape': str(gold_table.shape), 'gen_shape': str(gen_table.shape),
                 'res_table': res_table, 'res_ves': res_ves, 'sql_sim_score':sql_sim_score, 'final_score':final_score,
-                'exec_time': str(exec_single)})
+                'exec_time': str(exec_single)}
         except:
-            metric_res.append({'model': my_data_manager.data_query[i].sql_model,
+            metric_res = {'model': my_data_manager.data_query[i].sql_model,
                 'db': my_data_manager.data_query[i].db_id,
                 'num': i,
                 'sql_gold': my_data_manager.data_query[i].SQL,
                 'sql_gen': my_data_manager.data_query[i].sql_generated, 'gold_shape': None, 'gen_shape': None,
                 'res_table': None, 'res_ves': None, 'sql_sim_score':None, 'final_score':None,
-                'exec_time': str(exec_single)})
+                'exec_time': str(exec_single)}
+        finally:
+            with open(f'metric_res_{args.weight_final_score_table}_{args.max_extra_information_percentage}_{args.model_name.split("/")[-1]}.json', 'w') as outfile:
+                json.dump(metric_res, outfile, indent=2)
+                print("="*30)
+                print("="*30)
+                print("="*30)
+        
+        # try:
+        #     metric_res.append({'model': my_data_manager.data_query[i].sql_model,
+        #         'db': my_data_manager.data_query[i].db_id,
+        #         'num': i,
+        #         'sql_gold': my_data_manager.data_query[i].SQL,
+        #         'sql_gen': my_data_manager.data_query[i].sql_generated, 'gold_shape': str(gold_table.shape), 'gen_shape': str(gen_table.shape),
+        #         'res_table': res_table, 'res_ves': res_ves, 'sql_sim_score':sql_sim_score, 'final_score':final_score,
+        #         'exec_time': str(exec_single)})
+        # except:
+        #     metric_res.append({'model': my_data_manager.data_query[i].sql_model,
+        #         'db': my_data_manager.data_query[i].db_id,
+        #         'num': i,
+        #         'sql_gold': my_data_manager.data_query[i].SQL,
+        #         'sql_gen': my_data_manager.data_query[i].sql_generated, 'gold_shape': None, 'gen_shape': None,
+        #         'res_table': None, 'res_ves': None, 'sql_sim_score':None, 'final_score':None,
+        #         'exec_time': str(exec_single)})
     
     end_time = time.time()
     execution_time = timedelta(seconds=end_time - start_time)
     print(f"total time spend: {execution_time}")
-    with open(f'metric_res_{args.weight_final_score_table}_{args.max_extra_information_percentage}_{args.model_name.split("/")[-1]}.json', 'w') as outfile:
-            json.dump(metric_res, outfile, indent=2)
+    # with open(f'metric_res_{args.weight_final_score_table}_{args.max_extra_information_percentage}_{args.model_name.split("/")[-1]}.json', 'w') as outfile:
+    #         json.dump(metric_res, outfile, indent=2)
     
     print("end comparing")
     print("END")
