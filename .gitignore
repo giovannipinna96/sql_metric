@@ -157,4 +157,7 @@ cython_debug/
 # folders
 data/
 notebook/
+results/
+results_metric/
+results_metric2/
 
