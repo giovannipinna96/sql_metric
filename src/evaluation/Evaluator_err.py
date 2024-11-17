@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from typing import List
 from databasesFacilitator.databaseInterpreter import DatabaseManager
 from math import sqrt
+import sqlite3
+
 
 class Evaluator(ABC):    
     def __init__(self) -> None:
@@ -99,15 +101,21 @@ class tableEvaluator(Evaluator):
             # print("Augmenting limit to 10")
             # sql_gold = self.replace_limit_with_10(sql_gold)
             # sql_predicted = self.replace_limit_with_10(sql_predicted)
-            result_query_execution_gold, execution_time_gold = db_manager.query_executor(sql_gold)
-            result_query_execution_gen, execution_time_gen = db_manager.query_executor(sql_predicted)
+            result_query_execution_gold, execution_time_gold, cursor = db_manager.sql_to_columns(sql_gold)
+            result_query_execution_gold, execution_time_gold, cursor = db_manager.query_executor(sql_gold)
+            result_query_execution_gen, execution_time_gen, cursor_gen = db_manager.query_executor(sql_predicted)
+            
+            first = self.sql_to_columns(sql_gold, cursor, True)
+            second = self.sql_to_columns(sql_predicted, cursor, True)
+            
+            
             print(f'gen -> {result_query_execution_gen.shape}')
             print(f'gold -> {result_query_execution_gold.shape}')
             if result_query_execution_gen.shape[0] < 150000:
                 if self.is_exact_substring('ORDER BY', self.delete_inside_parentheses(sql_gold.upper())):# or self.is_exact_substring('ORDER BY', sql_predicted.upper()):
                     print("order")
                     # res_order_table = self.order_table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen, max_extra_information_percentage=max_extra_information_percentage)
-                    res_table = self.table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen, order=True)
+                    res_table = self.table_evaluation(result_query_execution_gold=result_query_execution_gold, result_query_execution_gen=result_query_execution_gen)
 
                 else:
                     # res_table = None
@@ -127,16 +135,9 @@ class tableEvaluator(Evaluator):
             return result_query_execution_gold, result_query_execution_gen, res_table, res_ves, False, False
     
     @staticmethod
-    def _edit_distance(list1, list2, order):
-        if not order:
-            list1.sort(key=lambda x: (x is None, x))
-            list2.sort(key=lambda x: (x is None, x))
-        # if len(list1) > 150000 or len(list2) > 150000: 
-        #     len_list1 = len_list1[:150000]
-        #     len_list2 = len_list2[:150000]
-        else:
-            len_list1 = len(list1)
-            len_list2 = len(list2)
+    def _edit_distance(list1, list2):
+        len_list1 = len(list1)
+        len_list2 = len(list2)
         dp = [[0 for _ in range(len_list2 + 1)] for _ in range(len_list1 + 1)]
 
         for i in range(len_list1 + 1):
@@ -199,7 +200,7 @@ class tableEvaluator(Evaluator):
         score = shift_score(min_shift)
         return score
     
-    def _build_cross_edit_distance_matrix(self, lists1, lists2, order):
+    def _build_cross_edit_distance_matrix(self, lists1, lists2):
         rows = len(lists1)
         cols = len(lists2)
         m = max(len(lists1[0]), len(lists2[0]))
@@ -208,20 +209,41 @@ class tableEvaluator(Evaluator):
 
         for i in range(rows):
             for j in range(cols):
-                matrix[i][j] = self._edit_distance(lists1[i], lists2[j], order)
+                matrix[i][j] = self._edit_distance(lists1[i], lists2[j])
 
         return matrix
+    
+    def sql_to_columns(self, sql: str, cursor: sqlite3.Cursor, sorted: bool = False, limited: bool = False) -> list[list]:
+        cursor.execute(sql)
+        columns = [[] for _ in cursor.description]
+        rows = cursor.fetchall()
+        row_counter = 0
+        for row in rows:
+            for index, cell in enumerate(row):
+                columns[index].append(cell)
+            row_counter += 1
+            if limited and row_counter == 750:
+                break
+        if not sorted:
+            for col in columns:
+                col.sort(key=lambda x: (x is None, x))
+        return columns
 
             
-    def table_evaluation(self, result_query_execution_gold, result_query_execution_gen, order=False) -> float | None:
+    def table_evaluation(self, result_query_execution_gold, result_query_execution_gen) -> float | None:
         # print(result_query_execution_gold)
         # print(result_query_execution_gen)
         # print("Table Evaluation...")
-        list_result_query_execution_gold = list(result_query_execution_gold.to_dict(orient='list').values())
-        list_result_query_execution_gen = list(result_query_execution_gen.to_dict(orient='list').values())
-        edit_distance_matirx = self._build_cross_edit_distance_matrix(list_result_query_execution_gold,
-                                                      list_result_query_execution_gen, order)
+        # list_result_query_execution_gold = list(result_query_execution_gold.to_dict(orient='list').values())
+        # list_result_query_execution_gen = list(result_query_execution_gen.to_dict(orient='list').values())
         
+        
+        edit_distance_matirx = self._build_cross_edit_distance_matrix(result_query_execution_gold,
+                                                      result_query_execution_gen)
+        # edit_distance_matirx = self._build_cross_edit_distance_matrix(list_result_query_execution_gold,
+        #                                               list_result_query_execution_gen)
+        
+        # ! non so quante righe e colonne sono presenti nella gold query dalla generated query
         
         e = 0
         # for i in range(len(edit_distance_matirx)):

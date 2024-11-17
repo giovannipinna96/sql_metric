@@ -55,11 +55,11 @@ def sql_similarity_score(sql1: str, sql2: str, compare_ast: bool = False):
 
 # Funzione che elabora gli input e produce sei output
 def process_inputs(sql_gold, sql_gen, dropdown_value):
-    dropdown_value = ALL_DB[dropdown_value]
+    # dropdown_value = ALL_DB[dropdown_value]
     tab_eval = tableEvaluator()
     interpreter = DatabaseInterpreterPandas(dropdown_value, '/mnt/data/gpinna/sql_metric/sql_metric/data/raw_data/dev')
     interpreter.load_database()
-    gold_table, gen_table, res_table, res_ves = tab_eval.evaluate(sql_gold, sql_gen, interpreter)
+    gold_table, gen_table, res_table, res_ves, is_order, more = tab_eval.evaluate(sql_gold, sql_gen, interpreter)
     common_keywords = sql_similarity_score(sql1=sql_gold, sql2=sql_gen)[0]
     # common_keywords = elementi_comuni_con_duplicati(extract_sql_keywords(sql_gold), extract_sql_keywords(sql_gen))
     if res_table < 0.1:
@@ -72,19 +72,21 @@ def process_inputs(sql_gold, sql_gen, dropdown_value):
         
     return gold_table, gen_table, res_table, res_ves, common_keywords, final_score
 
-ALL_DB: dict[str, str] = {
-    'california schools': "california_schools",
-    'card games': "card_games",
-    'codebase community': "codebase_community",
-    'debit card specializing': "debit_card_specializing",
-    'european football': "european_football_2",
-    'financial': "financial",
-    'formula 1': "formuala_1",
-    'student club': "student_club",
-    'superhero': "superhero",
-    'thrombosis prediction': "thrombosis_prediction",
-    'toxicology': "toxicology",     
-}
+ALL_DB = ["california_schools", "card_games", "codebase_community", "debit_card_specializing", "european_football_2", "financial", "formula_1",
+     "student_club", "superhero", "thrombosis_prediction", "toxicology"]
+# ALL_DB: dict[str, str] = {
+#     'california schools': "california_schools",
+#     'card games': "card_games",
+#     'codebase community': "codebase_community",
+#     'debit card specializing': "debit_card_specializing",
+#     'european football': "european_football_2",
+#     'financial': "financial",
+#     'formula 1': "formuala_1",
+#     'student club': "student_club",
+#     'superhero': "superhero",
+#     'thrombosis prediction': "thrombosis_prediction",
+#     'toxicology': "toxicology",     
+# }
 
 # Creazione dell'interfaccia Gradio
 with gr.Blocks() as demo:
@@ -94,11 +96,12 @@ with gr.Blocks() as demo:
         sql_gold = gr.Textbox(label="SQL Gold")
         sql_gen = gr.Textbox(label="SQL Gen")
     
-    dropdown = gr.Dropdown(choices=ALL_DB.keys(), label="Select database")
+    dropdown = gr.Dropdown(choices=ALL_DB, label="Select database")
     button = gr.Button("Evaluate")
     
     with gr.Row():
         tss = gr.Textbox(label="Table Similarity Score")
+        # tss2 = gr.Textbox(label="Table Similarity Score decompose")
         ves = gr.Textbox(label="VES")
         common_keywords = gr.Textbox(label="SQL similarity")
         final_score = gr.Textbox(label="Final score (no ves cosidered)")

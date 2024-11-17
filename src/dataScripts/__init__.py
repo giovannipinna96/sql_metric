@@ -6,16 +6,16 @@ SQL_KEYWORDS = [
 ] 
 
 ALL_DB: dict[str, str] = {
-    'california schools': "california_schools",
-    'card games': "card_games",
-    'codebase community': "codebase_community",
-    'debit card specializing': "debit_card_specializing",
-    'european football': "european_football_2",
+    'california_schools': "california_schools",
+    'card_games': "card_games",
+    'codebase_community': "codebase_community",
+    'debit_card_specializing': "debit_card_specializing",
+    'european_football_2': "european_football_2",
     'financial': "financial",
-    'formula 1': "formuala_1",
-    'student club': "student_club",
+    'formula_1': "formula_1",
+    'student_club': "student_club",
     'superhero': "superhero",
-    'thrombosis prediction': "thrombosis_prediction",
+    'thrombosis_prediction': "thrombosis_prediction",
     'toxicology': "toxicology",     
 }
 

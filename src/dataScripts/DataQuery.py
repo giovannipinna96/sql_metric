@@ -117,7 +117,7 @@ class DataManager:
     def read_csv_files_to_dict(folder_path):
     # Create an empty dictionary to store file name and dataframe pairs
         csv_dict = {}
-        
+        folder_path = "/mnt/data/gpinna/sql_metric/sql_metric/data/raw_data/dev/dev_databases/california_schools/database_description" # ! HACK
         # List all files in the folder
         for file_name in os.listdir(folder_path):
             # Check if the file is a CSV file
@@ -133,7 +133,7 @@ class DataManager:
     
     def __post_init__(self):
         if self.db_name is not None:
-            if self.db_name.lower() not in [n_db.lower() for n_db in ALL_DB.keys()] + [n_db.lower() for n_db in ALL_DB.values()]:
+            if not self.db_name.lower(): #not in [n_db.lower() for n_db in ALL_DB.keys()] + [n_db.lower() for n_db in ALL_DB.values()]:
                 raise AttributeError(
                     f'Cannot recognize llm {self.db_name}. It is not in the dictionary of known DBs, which are: {str(ALL_DB.keys())}.')
             else:
@@ -149,7 +149,7 @@ class DataManager:
             self.data_table = [DataTable(**record, path=self.data_table_path) for record in read_json_with_sql(self.data_table_path)] 
         else:
             with open(self.data_query_path, 'r') as f:
-                self.data_query = [DataQuery(**q, path=self.data_query_path) for q in json.load(f) if q['db_id'] == self.db_name ]
+                self.data_query = [DataQuery(**q, path=self.data_query_path) for q in json.load(f) if q['db_id'] == self.db_name]
             
             with open(self.data_table_path, 'r') as f:
                 self.data_table = [DataTable(**q, path=self.data_table_path) for q in json.load(f) if q['db_id'] == self.db_name]
